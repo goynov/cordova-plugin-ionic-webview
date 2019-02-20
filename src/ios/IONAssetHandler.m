@@ -8,6 +8,15 @@
     self.basePath = assetPath;
 }
 
+- (instancetype)initWithBasePath:(NSString *)basePath andScheme:(NSString *)scheme {
+    self = [super init];
+    if (self) {
+        _basePath = basePath;
+        _scheme = scheme;
+    }
+    return self;
+}
+
 - (void)webView:(WKWebView *)webView startURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask
 {
     NSString * startPath = @"";
@@ -17,12 +26,7 @@
     NSData * data;
     bool inmem = false;
 
-    if ([scheme isEqualToString:IONIC_SCHEME]) {
-        NSRange range = [stringToLoad rangeOfString:@"?"];
-        if (range.location != NSNotFound) {
-            stringToLoad = [stringToLoad substringToIndex:range.location];
-        }
-        
+    if ([scheme isEqualToString:self.scheme]) {
         if ([stringToLoad hasPrefix:@"/_inmem_/"]){
             startPath = [stringToLoad stringByReplacingOccurrencesOfString:@"/_inmem_/" withString:@""];
             CDVAppDelegate * cad = (CDVAppDelegate *) [[UIApplication sharedApplication] delegate];
@@ -43,10 +47,11 @@
             }
         }
     }
-    
+
     if (!inmem){
         data = [[NSData alloc] initWithContentsOfFile:startPath];
     }
+    
     NSInteger statusCode = 200;
     if (!data) {
         statusCode = 404;
@@ -62,7 +67,7 @@
     }
     
     [urlSchemeTask didReceiveResponse:response];
-    [urlSchemeTask didReceiveData: data];
+    [urlSchemeTask didReceiveData:data];
     [urlSchemeTask didFinish];
 
 }
