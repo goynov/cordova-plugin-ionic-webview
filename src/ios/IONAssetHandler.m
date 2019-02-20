@@ -8,24 +8,31 @@
     self.basePath = assetPath;
 }
 
-- (instancetype)initWithBasePath:(NSString *)basePath andScheme:(NSString *)scheme {
-    self = [super init];
-    if (self) {
-        _basePath = basePath;
-        _scheme = scheme;
-    }
-    return self;
-}
-
 - (void)webView:(WKWebView *)webView startURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask
 {
     NSString * startPath = @"";
     NSURL * url = urlSchemeTask.request.URL;
     NSString * stringToLoad = url.path;
     NSString * scheme = url.scheme;
+    NSData * data;
+    bool inmem = false;
 
-    if ([scheme isEqualToString:self.scheme]) {
-        if ([stringToLoad hasPrefix:@"/_app_file_"]) {
+    if ([scheme isEqualToString:IONIC_SCHEME]) {
+        NSRange range = [stringToLoad rangeOfString:@"?"];
+        if (range.location != NSNotFound) {
+            stringToLoad = [stringToLoad substringToIndex:range.location];
+        }
+        
+        if ([stringToLoad hasPrefix:@"/_inmem_/"]){
+            startPath = [stringToLoad stringByReplacingOccurrencesOfString:@"/_inmem_/" withString:@""];
+            CDVAppDelegate * cad = (CDVAppDelegate *) [[UIApplication sharedApplication] delegate];
+            NSMutableDictionary * ma = cad.memoryObjects;
+            if (ma.count > 0){
+                inmem = true;
+                data = ma[startPath];
+            }
+        }
+        else if ([stringToLoad hasPrefix:@"/_app_file_"]) {
             startPath = [stringToLoad stringByReplacingOccurrencesOfString:@"/_app_file_" withString:@""];
         } else {
             startPath = self.basePath;
@@ -36,8 +43,10 @@
             }
         }
     }
-
-    NSData * data = [[NSData alloc] initWithContentsOfFile:startPath];
+    
+    if (!inmem){
+        data = [[NSData alloc] initWithContentsOfFile:startPath];
+    }
     NSInteger statusCode = 200;
     if (!data) {
         statusCode = 404;
@@ -53,7 +62,7 @@
     }
     
     [urlSchemeTask didReceiveResponse:response];
-    [urlSchemeTask didReceiveData:data];
+    [urlSchemeTask didReceiveData: data];
     [urlSchemeTask didFinish];
 
 }
